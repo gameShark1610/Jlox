@@ -5,7 +5,16 @@ import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.List;
 
-// Help us avoid handwriting each class definition, field declaration, constructor, and initializer
+/**
+ * AST Code Generator (Tooling Script)
+ *
+ * NOTE: This is NOT part of the runtime interpreter! It is an offline utility script.
+ * 
+ * Purpose:
+ * Java is verbose. Defining dozens of AST node classes with constructors, private final fields,
+ * and the Visitor pattern by hand would require writing hundreds of lines of boilerplate.
+ * This script generates 'Expr.java' and 'Stmt.java' directly from concise descriptions.
+ */
 public class GenerateAst {
     public static void main(String[] args) throws IOException {
         if (args.length != 1) {
@@ -19,6 +28,11 @@ public class GenerateAst {
                 "Grouping : Expr expression",
                 "Literal  : Object value",
                 "Unary    : Token operator, Expr right"
+        ));
+
+        defineAst(outputDir, "Stmt", Arrays.asList(
+                "Expression : Expr expression",
+                "Print      : Expr expression"
         ));
     }
 

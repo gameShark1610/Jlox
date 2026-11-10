@@ -1,9 +1,29 @@
 package com.craftinginterpreters.lox;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.craftinginterpreters.lox.TokenType.*;
 
+/**
+ * Recursive Descent Parser
+ *
+ * Takes a flat list of Tokens from the Scanner and builds a hierarchical AST (Abstract Syntax Tree).
+ *
+ * Key Concepts:
+ * 1. Recursive Descent:
+ *    - Each grammar rule is represented as a method in this class.
+ *    - Higher methods call lower methods to parse sub-expressions.
+ *
+ * 2. Precedence Hierarchy (from lowest to highest precedence):
+ *    - expression() -> equality() -> comparison() -> term() -> factor() -> unary() -> primary()
+ *    - Lower precedence rules are near the top of the call stack.
+ *    - Higher precedence rules are at the bottom, so they bind tighter and evaluate first!
+ *
+ * 3. Statements vs Expressions:
+ *    - Stmt (Statement): Performs an action / side effect (e.g., print, variable declaration), produces no value.
+ *    - Expr (Expression): Evaluates to a runtime value (e.g., 1 + 2, true).
+ */
 class Parser {
     private static class ParseError extends RuntimeException {}
 
@@ -14,23 +34,47 @@ class Parser {
         this.tokens = tokens;
     }
 
-    //Define an initial method to kick it off.
-    Expr parse() {
-        try {
-            return expression();
-        } catch (ParseError error) {
-            return null;
+    //Parses a series of statements, as many as it can find until it hits the end of the input.
+    List<Stmt> parse() {
+        List<Stmt> statements = new ArrayList<>();
+        while (!isAtEnd()) {
+            statements.add(statement());
         }
+
+        return statements;
     }
 
     private Expr expression() {
         return equality();
     }
 
-    //equality → comparison ( ( "!=" | "==" ) comparison )* ;
+    //A program is a list of statements, and we parse one of those statements using this method
+    private Stmt statement() {
+        //If the current token is PRINT, we print the statement
+        if (match(PRINT)) return printStatement();
+
+        return expressionStatement();
+    }
+
+    private Stmt printStatement() {
+        Expr value = expression();
+        consume(SEMICOLON, "Expect ';' after value.");
+        return new Stmt.Print(value);
+    }
+
+    private Stmt expressionStatement() {
+        Expr expr = expression();
+        consume(SEMICOLON, "Expect ';' after expression.");
+        return new Stmt.Expression(expr);
+    }
+
+    // equality → comparison ( ( "!=" | "==" ) comparison )* ;
+    // Lowest precedence binary operator: evaluated after comparisons, additions, and multiplications.
     private Expr equality() {
         Expr expr = comparison();
 
+        // While we see equality operators, wrap the current expression as the left child
+        // of a new Binary node (left-associative: 'a == b == c' becomes '((a == b) == c)').
         while (match(BANG_EQUAL, EQUAL_EQUAL)) {
             Token operator = previous();
             Expr right = comparison();
@@ -40,7 +84,7 @@ class Parser {
         return expr;
     }
 
-    //comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+    // comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
     private Expr comparison() {
         Expr expr = term();
 
@@ -53,7 +97,8 @@ class Parser {
         return expr;
     }
 
-    //First Addition and subtraction
+    // term → factor ( ( "-" | "+" ) factor )* ;
+    // Addition and subtraction (lower precedence than multiplication/division, higher than comparison).
     private Expr term() {
         Expr expr = factor();
 
@@ -66,7 +111,8 @@ class Parser {
         return expr;
     }
 
-    //Finally, Multiplication and division
+    // factor → unary ( ( "/" | "*" ) unary )* ;
+    // Multiplication and division (binds tighter than addition/subtraction).
     private Expr factor() {
         Expr expr = unary();
 

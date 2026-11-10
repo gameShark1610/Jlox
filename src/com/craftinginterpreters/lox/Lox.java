@@ -47,23 +47,19 @@ public class Lox {
     }
 
     private static void run(String source) {
+        // 1. Lexical Analysis (Scanning): converts characters to tokens
         Scanner scanner = new Scanner(source);
         List<Token> tokens = scanner.scanTokens();
 
-        /* For now, just print the tokens.
-        for (Token token : tokens) {
-            System.out.println(token);
-        }*/
-
-        //Parser
+        // 2. Syntactic Analysis (Parsing): converts tokens into a list of Statements (AST)
         Parser parser = new Parser(tokens);
-        Expr expression = parser.parse();
-        // Stop if there was a syntax error.
-        if (hadError) return;
-        /*Check the expression
-        System.out.println(new AstPrinter().print(expression));*/
+        List<Stmt> statements = parser.parse();
 
-        interpreter.interpret(expression);
+        // Stop if there was a syntax error detected during parsing
+        if (hadError) return;
+
+        // 3. Execution (Interpretation): walks the AST and executes each statement
+        interpreter.interpret(statements);
     }
 
     static void error(int line, String message) {
