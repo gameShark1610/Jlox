@@ -25,6 +25,9 @@ import java.util.List;
  *      'visitor.visitBinaryExpr(this)', 'visitLiteralExpr(this)', etc.
  */
 class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
+
+    private Environment environment = new Environment();
+
     // Punto de entrada publico del interprete: ejecuta una lista secuencial de sentencias
     void interpret(List<Stmt> statements) {
         try {
@@ -139,6 +142,13 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         return null;
     }
 
+    //Nos permite cuando vale una variable en determinado momento, si hacemos print x, entonces este metodo busca la x.
+    @Override
+    public Object visitVariableExpr(Expr.Variable expr) {
+        return environment.get(expr.name);
+    }
+
+
     // Ejecuta una sentencia de expresión: calcula el valor y lo descarta
     @Override
     public Void visitExpressionStmt(Stmt.Expression stmt) {
@@ -151,6 +161,19 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     public Void visitPrintStmt(Stmt.Print stmt) {
         Object value = evaluate(stmt.expression);
         System.out.println(stringify(value));
+        return null;
+    }
+
+    //Declaracion de sentencias
+    @Override
+    public Void visitVarStmt(Stmt.Var stmt) {
+        Object value = null;
+        //Si la variable tiene un inicializador, la evaluamos
+        if (stmt.initializer != null) {
+            value = evaluate(stmt.initializer);
+        }
+        //Si no tienen incializador, para evitar errores, la inicializamos con nil
+        environment.define(stmt.name.lexeme, value);
         return null;
     }
 
