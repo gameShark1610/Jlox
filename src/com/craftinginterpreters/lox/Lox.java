@@ -47,18 +47,21 @@ public class Lox {
     }
 
     private static void run(String source) {
-        // 1. Lexical Analysis (Scanning): converts characters to tokens
+        // PASO 1: Analisis Lexico (Scanner)
+        // Convierte la cadena de caracteres cruda en una lista de palabras/simbolos reconocibles (Tokens).
         Scanner scanner = new Scanner(source);
         List<Token> tokens = scanner.scanTokens();
 
-        // 2. Syntactic Analysis (Parsing): converts tokens into a list of Statements (AST)
+        // PASO 2: Analisis Sintactico (Parser)
+        // Toma la lista plana de tokens y construye la jerarquia de operaciones: el Arbol de Sintaxis (AST).
         Parser parser = new Parser(tokens);
         List<Stmt> statements = parser.parse();
 
-        // Stop if there was a syntax error detected during parsing
+        // Si ocurrio algun error de sintaxis al armar el arbol, nos detenemos y no ejecutamos nada.
         if (hadError) return;
 
-        // 3. Execution (Interpretation): walks the AST and executes each statement
+        // PASO 3: Ejecucion / Interpretacion (Interpreter)
+        // Recorre el arbol de sintaxis y ejecuta cada sentencia calculando los resultados finales.
         interpreter.interpret(statements);
     }
 

@@ -3,27 +3,29 @@ package com.craftinginterpreters.lox;
 import java.util.List;
 
 /**
- * The Tree-Walk Interpreter
+ * Interprete por Recorrido de Arbol (Tree-Walk Interpreter)
  *
- * Traverses the AST produced by the Parser and executes the program.
+ * Recorre el Arbol de Sintaxis Abstracta (AST) generado por el Parser y ejecuta el programa.
  *
- * Key Concepts:
- * 1. Visitor Pattern:
- *    - Implements Expr.Visitor<Object> for expressions (return a runtime value).
- *    - Implements Stmt.Visitor<Void> for statements (perform side-effects, return null).
- *    - Why? Decouples the AST node data structures from the operations performed on them.
+ * CONCEPTOS CLAVE:
  *
- * 2. Post-Order Tree Traversal (Bottom-Up Evaluation):
- *    - To evaluate an operation (e.g. 1 + 2), evaluate() first visits the left and right children,
- *      then computes the parent's result with the evaluated values.
+ * 1. Patron de Diseno Visitor:
+ *    - Implementa Expr.Visitor<Object> para expresiones: cada visita calcula y RETORNA un valor en memoria.
+ *    - Implementa Stmt.Visitor<Void> para sentencias: cada visita EJECUTA un efecto secundario (como imprimir)
+ *      y retorna null (Void).
+ *    - Por que? Desacopla las clases de datos del arbol (Expr y Stmt) de la logica de evaluacion.
  *
- * 3. Double Dispatch:
- *    - 'evaluate(expr)' calls 'expr.accept(this)'.
- *    - 'accept()' knows the concrete subclass type and calls back into the matching
+ * 2. Recorrido Post-Orden (Evaluacion de abajo hacia arriba):
+ *    - Para resolver una operacion (ej: 1 + 2), evaluate() primero resuelve los operandos hijos
+ *      (1 y 2), y luego calcula el resultado en el nodo padre (+).
+ *
+ * 3. Despacho Doble (Double Dispatch):
+ *    - 'evaluate(expr)' llama a 'expr.accept(this)'.
+ *    - 'accept()' conoce el tipo exacto del nodo y le regresa la llamada al interprete:
  *      'visitor.visitBinaryExpr(this)', 'visitLiteralExpr(this)', etc.
  */
 class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
-    // The Interpreter's public entry point: executes a list of statements sequentially
+    // Punto de entrada publico del interprete: ejecuta una lista secuencial de sentencias
     void interpret(List<Stmt> statements) {
         try {
             for (Stmt statement : statements) {
@@ -34,7 +36,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         }
     }
 
-    // Helper for executing a single statement via the Visitor pattern
+    // Auxiliar para ejecutar una sentencia enviando este interprete a su metodo accept()
     private void execute(Stmt stmt) {
         stmt.accept(this);
     }
@@ -64,7 +66,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
             case MINUS:
                 checkNumberOperands(expr.operator, left, right);
                 return (double) left - (double) right;
-            //This works to concatenate two string or sum two numbers,
+            // El operador '+' está sobrecargado: suma números o concatena strings
             case PLUS:
                 if (left instanceof Double && right instanceof Double) {
                     return (double) left + (double) right;
@@ -81,11 +83,11 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
                 return (double) left * (double) right;
         }
 
-        // Unreachable.
+        // Inalcanzable si el parser construyó bien el árbol
         return null;
     }
 
-    //The equality operators support operands of any type, even mixed ones. You can’t ask Lox if 3 is less than "three", but you can ask if it’s equal to it.
+    // Igualdad: Soporta cualquier tipo de dato, incluso tipos mixtos (ej: nil == false es false).
     private boolean isEqual(Object a, Object b) {
         if (a == null && b == null) return true;
         if (a == null) return false;
@@ -93,7 +95,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         return a.equals(b);
     }
 
-    //To convert a Lox value to a string
+    // Convierte un valor de runtime de Lox a un String para imprimirlo en pantalla
     private String stringify(Object object) {
         if (object == null) return "nil";
 
@@ -113,36 +115,38 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         return evaluate(expr.expression);
     }
 
-    //We convert the literal tree node into a runtime value.
+    // Convierte el nodo hoja Literal directamente en su valor primitivo en Java
     @Override
     public Object visitLiteralExpr(Expr.Literal expr) {
         return expr.value;
     }
 
-    //Evaluate parentheses
+    // Evalúa operadores unarios (! y -)
     @Override
     public Object visitUnaryExpr(Expr.Unary expr) {
         Object right = evaluate(expr.right);
 
         switch (expr.operator.type) {
             case MINUS:
-                //The subexpression must be a number. Since we don’t statically know that in Java
+                // La subexpresión debe ser un número en tiempo de ejecución
                 checkNumberOperand(expr.operator, right);
                 return -(double) right;
             case BANG:
                 return !isTruthy(right);
         }
 
-        // Unreachable.
+        // Inalcanzable
         return null;
     }
 
+    // Ejecuta una sentencia de expresión: calcula el valor y lo descarta
     @Override
     public Void visitExpressionStmt(Stmt.Expression stmt) {
         evaluate(stmt.expression);
         return null;
     }
 
+    // Ejecuta una sentencia 'print': calcula el valor de la expresión y lo imprime en consola
     @Override
     public Void visitPrintStmt(Stmt.Print stmt) {
         Object value = evaluate(stmt.expression);
@@ -150,26 +154,26 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         return null;
     }
 
-
-    // Evaluates an expression by sending the interpreter (this) into the expression's accept() method.
-    // The expression will call the corresponding visit* method on this interpreter.
+    // Evalúa una expresión enviando el intérprete actual (this) al método accept() del nodo.
+    // El nodo sabrá a qué método visit* llamar de regreso.
     private Object evaluate(Expr expr) {
         return expr.accept(this);
     }
 
-
-    //False and nil are falsey, and everything else is truthy.
+    // Regla de verdad en Lox: 'false' y 'nil' son falsos; todo lo demás es verdadero (truthy).
     private boolean isTruthy(Object object) {
         if (object == null) return false;
         if (object instanceof Boolean) return (boolean) object;
         return true;
     }
 
+    // Verifica que el operando sea numérico antes de operaciones aritméticas (ej: -negación)
     private void checkNumberOperand(Token operator, Object operand) {
         if (operand instanceof Double) return;
         throw new RuntimeError(operator, "Operand must be a number.");
     }
 
+    // Verifica que ambos operandos sean números para operaciones binarias (ej: -, *, /, <, >)
     private void checkNumberOperands(Token operator, Object left, Object right) {
         if (left instanceof Double && right instanceof Double) return;
 

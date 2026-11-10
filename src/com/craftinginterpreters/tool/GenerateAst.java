@@ -6,14 +6,19 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * AST Code Generator (Tooling Script)
+ * Generador de Codigo para el AST (Script de Herramienta)
  *
- * NOTE: This is NOT part of the runtime interpreter! It is an offline utility script.
- * 
- * Purpose:
- * Java is verbose. Defining dozens of AST node classes with constructors, private final fields,
- * and the Visitor pattern by hand would require writing hundreds of lines of boilerplate.
- * This script generates 'Expr.java' and 'Stmt.java' directly from concise descriptions.
+ * NOTA IMPORTANTE: Esta clase NO forma parte del compilador/interprete en tiempo de ejecucion.
+ * Es simplemente una pequena herramienta auxiliar ("script") que ejecutamos cuando necesitamos
+ * crear o modificar las clases del Arbol de Sintaxis Abstracta (AST).
+ *
+ * Por que existe este archivo?
+ * Java es un lenguaje muy verboso. Definir manualmente decenas de clases para cada nodo del arbol
+ * (Binary, Unary, Literal, Print, etc.) con sus constructores, variables 'final' y los metodos del
+ * patron Visitor requeriria escribir cientos de lineas repetitivas de codigo "boilerplate".
+ *
+ * Este script se encarga de escribir automaticamente los archivos 'Expr.java' y 'Stmt.java'
+ * a partir de las descripciones simples que ves abajo.
  */
 public class GenerateAst {
     public static void main(String[] args) throws IOException {
@@ -23,6 +28,7 @@ public class GenerateAst {
         }
         String outputDir = args[0];
 
+        // 1. Familia 'Expr' (Expresiones): Cualquier nodo que produce o calcula un VALOR.
         defineAst(outputDir, "Expr", Arrays.asList(
                 "Binary   : Expr left, Token operator, Expr right",
                 "Grouping : Expr expression",
@@ -30,6 +36,8 @@ public class GenerateAst {
                 "Unary    : Token operator, Expr right"
         ));
 
+        // 2. Familia 'Stmt' (Sentencias/Declaraciones): Instrucciones que ejecutan una ACCIÓN (efecto secundario),
+        // pero NO retornan un valor directamente.
         defineAst(outputDir, "Stmt", Arrays.asList(
                 "Expression : Expr expression",
                 "Print      : Expr expression"

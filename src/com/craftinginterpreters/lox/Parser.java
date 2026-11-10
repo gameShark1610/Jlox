@@ -6,23 +6,26 @@ import java.util.List;
 import static com.craftinginterpreters.lox.TokenType.*;
 
 /**
- * Recursive Descent Parser
+ * Parser por Descenso Recursivo (Recursive Descent Parser)
  *
- * Takes a flat list of Tokens from the Scanner and builds a hierarchical AST (Abstract Syntax Tree).
+ * Transforma una lista plana de Tokens (producida por el Scanner) en un
+ * Arbol de Sintaxis Abstracta (AST) con estructura jerarquica.
  *
- * Key Concepts:
- * 1. Recursive Descent:
- *    - Each grammar rule is represented as a method in this class.
- *    - Higher methods call lower methods to parse sub-expressions.
+ * CONCEPTOS CLAVE:
  *
- * 2. Precedence Hierarchy (from lowest to highest precedence):
+ * 1. Descenso Recursivo (Top-Down):
+ *    - Cada regla de la gramatica formal se traduce directamente en un metodo de esta clase.
+ *    - Los metodos de mayor nivel llaman a metodos de niveles mas profundos para parsear sub-expresiones.
+ *
+ * 2. Jerarquia de Precedencia (de menor a mayor prioridad):
  *    - expression() -> equality() -> comparison() -> term() -> factor() -> unary() -> primary()
- *    - Lower precedence rules are near the top of the call stack.
- *    - Higher precedence rules are at the bottom, so they bind tighter and evaluate first!
+ *    - Por que? Las reglas de MENOR precedencia (como == o +) estan ARRIBA en la pila de llamadas.
+ *    - Las reglas de MAYOR precedencia (como * o parentesis) estan en el FONDO, por lo que "atan"
+ *      los operandos con mas fuerza y sus nodos quedan mas profundos en el arbol (se resuelven primero).
  *
- * 3. Statements vs Expressions:
- *    - Stmt (Statement): Performs an action / side effect (e.g., print, variable declaration), produces no value.
- *    - Expr (Expression): Evaluates to a runtime value (e.g., 1 + 2, true).
+ * 3. Sentencias (Stmt) vs Expresiones (Expr):
+ *    - Stmt (Statement): Representa una instruccion o accion (efecto secundario), ej: 'print', declarar variables.
+ *    - Expr (Expression): Produce y calcula un valor concreto en tiempo de ejecucion, ej: '1 + 2', 'true'.
  */
 class Parser {
     private static class ParseError extends RuntimeException {}
@@ -34,7 +37,7 @@ class Parser {
         this.tokens = tokens;
     }
 
-    //Parses a series of statements, as many as it can find until it hits the end of the input.
+    // Punto de entrada: Parsea una serie de sentencias completas hasta llegar al final del archivo (EOF).
     List<Stmt> parse() {
         List<Stmt> statements = new ArrayList<>();
         while (!isAtEnd()) {
@@ -48,33 +51,34 @@ class Parser {
         return equality();
     }
 
-    //A program is a list of statements, and we parse one of those statements using this method
+    // Un programa es una lista de sentencias. Este metodo decide que tipo de sentencia estamos leyendo.
     private Stmt statement() {
-        //If the current token is PRINT, we print the statement
+        // Si el token actual es 'print', parseamos una sentencia de impresion
         if (match(PRINT)) return printStatement();
 
+        // Si no es ninguna palabra clave especial, debe ser una expresion seguida de ';'
         return expressionStatement();
     }
 
+    // Parsea: print <expresion> ;
     private Stmt printStatement() {
         Expr value = expression();
         consume(SEMICOLON, "Expect ';' after value.");
         return new Stmt.Print(value);
     }
 
+    // Parsea una expresion evaluable seguida de ';', ej: '1 + 2;'
     private Stmt expressionStatement() {
         Expr expr = expression();
         consume(SEMICOLON, "Expect ';' after expression.");
         return new Stmt.Expression(expr);
     }
 
-    // equality → comparison ( ( "!=" | "==" ) comparison )* ;
-    // Lowest precedence binary operator: evaluated after comparisons, additions, and multiplications.
+    // equality -> comparison ( ( "!=" | "==" ) comparison )* ;
+    // Menor precedencia que comparison. Se asocia a la izquierda: 'a == b == c' se convierte en '((a == b) == c)'
     private Expr equality() {
         Expr expr = comparison();
 
-        // While we see equality operators, wrap the current expression as the left child
-        // of a new Binary node (left-associative: 'a == b == c' becomes '((a == b) == c)').
         while (match(BANG_EQUAL, EQUAL_EQUAL)) {
             Token operator = previous();
             Expr right = comparison();
@@ -84,7 +88,8 @@ class Parser {
         return expr;
     }
 
-    // comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+    // comparison -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+    // Operadores de comparacion relacional.
     private Expr comparison() {
         Expr expr = term();
 
@@ -97,8 +102,8 @@ class Parser {
         return expr;
     }
 
-    // term → factor ( ( "-" | "+" ) factor )* ;
-    // Addition and subtraction (lower precedence than multiplication/division, higher than comparison).
+    // term -> factor ( ( "-" | "+" ) factor )* ;
+    // Suma y resta (menor prioridad que la multiplicacion, mayor que la comparacion).
     private Expr term() {
         Expr expr = factor();
 
@@ -111,8 +116,8 @@ class Parser {
         return expr;
     }
 
-    // factor → unary ( ( "/" | "*" ) unary )* ;
-    // Multiplication and division (binds tighter than addition/subtraction).
+    // factor -> unary ( ( "/" | "*" ) unary )* ;
+    // Multiplicacion y division (mayor prioridad que la suma/resta).
     private Expr factor() {
         Expr expr = unary();
 
@@ -125,7 +130,8 @@ class Parser {
         return expr;
     }
 
-    //unary → ( "!" | "-" ) unary | primary ;
+    // unary -> ( "!" | "-" ) unary | primary ;
+    // Operadores unarios con prefijo (ej: -5, !true). Se asocian a la derecha.
     private Expr unary() {
         if (match(BANG, MINUS)) {
             Token operator = previous();
@@ -136,7 +142,8 @@ class Parser {
         return primary();
     }
 
-    //primary → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
+    // primary -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
+    // La maxima prioridad: valores atomicos directos (literales) o expresiones agrupadas entre parentesis.
     private Expr primary() {
         if (match(FALSE)) return new Expr.Literal(false);
         if (match(TRUE)) return new Expr.Literal(true);
@@ -151,7 +158,7 @@ class Parser {
             consume(RIGHT_PAREN, "Expect ')' after expression.");
             return new Expr.Grouping(expr);
         }
-        //If none of the cases in there match, it means we are sitting on a token that can’t start an expression.
+        // Si ningun caso coincide, estamos en un token que no puede iniciar una expresion sintactica valida.
         throw error(peek(), "Expect expression.");
     }
 
