@@ -30,6 +30,7 @@ public class GenerateAst {
 
         // 1. Familia 'Expr' (Expresiones): Cualquier nodo que produce o calcula un VALOR.
         defineAst(outputDir, "Expr", Arrays.asList(
+                "Assign   : Token name, Expr value",
                 "Binary   : Expr left, Token operator, Expr right",
                 "Grouping : Expr expression",
                 "Literal  : Object value",

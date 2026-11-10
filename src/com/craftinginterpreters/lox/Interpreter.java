@@ -177,6 +177,15 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         return null;
     }
 
+    //Asinga un valor a una variable
+    @Override
+    public Object visitAssignExpr(Expr.Assign expr) {
+        Object value = evaluate(expr.value);
+        environment.assign(expr.name, value);
+        return value;
+    }
+
+
     // Evalúa una expresión enviando el intérprete actual (this) al método accept() del nodo.
     // El nodo sabrá a qué método visit* llamar de regreso.
     private Object evaluate(Expr expr) {
