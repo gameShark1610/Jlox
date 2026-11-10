@@ -26,8 +26,14 @@ import static com.craftinginterpreters.lox.TokenType.*;
  * 3. Sentencias (Stmt) vs Expresiones (Expr):
  *    - Stmt (Statement): Representa una instruccion o accion (efecto secundario), ej: 'print', declarar variables.
  *    - Expr (Expression): Produce y calcula un valor concreto en tiempo de ejecucion, ej: '1 + 2', 'true'.
+ *
+ *   Declaraciones: Crean algo nuevo
+ *   Sentencias: Son las que hacen algo como print o bloques
+ *   Expresiones: Solo son calculos
  */
 class Parser {
+    //program → declaration* EOF ;
+
     private static class ParseError extends RuntimeException {}
 
     private final List<Token> tokens;
@@ -41,17 +47,43 @@ class Parser {
     List<Stmt> parse() {
         List<Stmt> statements = new ArrayList<>();
         while (!isAtEnd()) {
-            statements.add(statement());
+            statements.add(declaration());
         }
 
         return statements;
     }
 
-    private Expr expression() {
-        return equality();
+    //declaration → varDecl | statement ;
+    private Stmt declaration() {
+        //Hay dos tipos de statements, los que usan
+        try {
+            if (match(VAR)) return varDeclaration();
+
+            return statement();
+        } catch (ParseError error) {
+            synchronize();
+            return null;
+        }
     }
 
-    // Un programa es una lista de sentencias. Este metodo decide que tipo de sentencia estamos leyendo.
+    //varDecl → "var" IDENTIFIER ( "=" expression )? ";" ;
+    private Stmt varDeclaration() {
+        //Checa si si es un identificador y lo consume
+        Token name = consume(IDENTIFIER, "Expect variable name.");
+
+        //Si tiene un igual lo inicializa con la expresion dada (Recordemos que una expresion es como un 5+3, entonce sprimero ejecuta la expresion)
+        Expr initializer = null;
+        if (match(EQUAL)) {
+            initializer = expression();
+        }
+        //COnsume el punto y coma, y si no manda un error
+        consume(SEMICOLON, "Expect ';' after variable declaration.");
+
+        //regresa el statement con variable
+        return new Stmt.Var(name, initializer);
+    }
+
+    //statement → exprStmt | printStmt
     private Stmt statement() {
         // Si el token actual es 'print', parseamos una sentencia de impresion
         if (match(PRINT)) return printStatement();
@@ -60,18 +92,23 @@ class Parser {
         return expressionStatement();
     }
 
-    // Parsea: print <expresion> ;
+    // exprStmt → expression ";" ;
+    private Stmt expressionStatement() {
+        Expr expr = expression();
+        consume(SEMICOLON, "Expect ';' after expression.");
+        return new Stmt.Expression(expr);
+    }
+
+    // printStmt → "print" expression ";" ;
     private Stmt printStatement() {
         Expr value = expression();
         consume(SEMICOLON, "Expect ';' after value.");
         return new Stmt.Print(value);
     }
 
-    // Parsea una expresion evaluable seguida de ';', ej: '1 + 2;'
-    private Stmt expressionStatement() {
-        Expr expr = expression();
-        consume(SEMICOLON, "Expect ';' after expression.");
-        return new Stmt.Expression(expr);
+    //expression → equality
+    private Expr expression() {
+        return equality();
     }
 
     // equality -> comparison ( ( "!=" | "==" ) comparison )* ;
@@ -142,7 +179,7 @@ class Parser {
         return primary();
     }
 
-    // primary -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
+    // primary -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER ;;
     // La maxima prioridad: valores atomicos directos (literales) o expresiones agrupadas entre parentesis.
     private Expr primary() {
         if (match(FALSE)) return new Expr.Literal(false);
@@ -151,6 +188,10 @@ class Parser {
 
         if (match(NUMBER, STRING)) {
             return new Expr.Literal(previous().literal);
+        }
+
+        if (match(IDENTIFIER)) {
+            return new Expr.Variable(previous());
         }
 
         if (match(LEFT_PAREN)) {

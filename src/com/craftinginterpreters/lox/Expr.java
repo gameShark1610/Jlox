@@ -2,20 +2,13 @@ package com.craftinginterpreters.lox;
 
 import java.util.List;
 
-/**
- * Nodos del Arbol de Sintaxis Abstracta (AST) para Expresiones (Expressions).
- *
- * Una expresion representa cualquier construccion de codigo que se evalua para
- * calcular y PRODUCIR UN VALOR (numeros, strings, operaciones matematicas, booleanos).
- *
- * (Generado automaticamente por la herramienta GenerateAst.java)
- */
 abstract class Expr {
   interface Visitor<R> {
     R visitBinaryExpr(Binary expr);
     R visitGroupingExpr(Grouping expr);
     R visitLiteralExpr(Literal expr);
     R visitUnaryExpr(Unary expr);
+    R visitVariableExpr(Variable expr);
   }
 
   abstract <R> R accept(Visitor<R> visitor);
@@ -72,5 +65,17 @@ abstract class Expr {
 
     final Token operator;
     final Expr right;
+  }
+  static class Variable extends Expr {
+    Variable(Token name) {
+      this.name = name;
+    }
+
+    @Override
+    <R> R accept(Visitor<R> visitor) {
+      return visitor.visitVariableExpr(this);
+    }
+
+    final Token name;
   }
 }

@@ -2,19 +2,11 @@ package com.craftinginterpreters.lox;
 
 import java.util.List;
 
-/**
- * Nodos del Arbol de Sintaxis Abstracta (AST) para Sentencias (Statements).
- *
- * Una sentencia representa una orden o accion que produce un EFECTO SECUNDARIO
- * (por ejemplo, imprimir en consola con 'print' o declarar variables), pero
- * NO produce un valor de retorno directamente.
- *
- * (Generado automaticamente por la herramienta GenerateAst.java)
- */
 abstract class Stmt {
   interface Visitor<R> {
     R visitExpressionStmt(Expression stmt);
     R visitPrintStmt(Print stmt);
+    R visitVarStmt(Var stmt);
   }
 
   abstract <R> R accept(Visitor<R> visitor);
@@ -41,5 +33,19 @@ abstract class Stmt {
     }
 
     final Expr expression;
+  }
+  static class Var extends Stmt {
+    Var(Token name, Expr initializer) {
+      this.name = name;
+      this.initializer = initializer;
+    }
+
+    @Override
+    <R> R accept(Visitor<R> visitor) {
+      return visitor.visitVarStmt(this);
+    }
+
+    final Token name;
+    final Expr initializer;
   }
 }
