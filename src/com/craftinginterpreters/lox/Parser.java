@@ -14,6 +14,15 @@ class Parser {
         this.tokens = tokens;
     }
 
+    //Define an initial method to kick it off.
+    Expr parse() {
+        try {
+            return expression();
+        } catch (ParseError error) {
+            return null;
+        }
+    }
+
     private Expr expression() {
         return equality();
     }
@@ -96,6 +105,8 @@ class Parser {
             consume(RIGHT_PAREN, "Expect ')' after expression.");
             return new Expr.Grouping(expr);
         }
+        //If none of the cases in there match, it means we are sitting on a token that can’t start an expression.
+        throw error(peek(), "Expect expression.");
     }
 
     //Check if any of the given tokens match with the current (Remember that the current reference to peek)
