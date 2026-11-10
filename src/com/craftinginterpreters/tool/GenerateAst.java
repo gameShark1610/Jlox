@@ -41,6 +41,7 @@ public class GenerateAst {
         // 2. Familia 'Stmt' (Sentencias/Declaraciones): Instrucciones que ejecutan una ACCIÓN (efecto secundario),
         // pero NO retornan un valor directamente.
         defineAst(outputDir, "Stmt", Arrays.asList(
+                "Block      : List<Stmt> statements",
                 "Expression : Expr expression",
                 "Print      : Expr expression",
                 "Var        : Token name, Expr initializer"

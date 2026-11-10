@@ -83,11 +83,11 @@ class Parser {
         return new Stmt.Var(name, initializer);
     }
 
-    //statement → exprStmt | printStmt
+    //statement → exprStmt | printStmt |  block ;
     private Stmt statement() {
         // Si el token actual es 'print', parseamos una sentencia de impresion
         if (match(PRINT)) return printStatement();
-
+        if (match(LEFT_BRACE)) return new Stmt.Block(block());
         // Si no es ninguna palabra clave especial, debe ser una expresion seguida de ';'
         return expressionStatement();
     }
@@ -97,6 +97,18 @@ class Parser {
         Expr expr = expression();
         consume(SEMICOLON, "Expect ';' after expression.");
         return new Stmt.Expression(expr);
+    }
+
+    //block → "{" declaration* "}" ;
+    private List<Stmt> block() {
+        List<Stmt> statements = new ArrayList<>();
+
+        while (!check(RIGHT_BRACE) && !isAtEnd()) {
+            statements.add(declaration());
+        }
+
+        consume(RIGHT_BRACE, "Expect '}' after block.");
+        return statements;
     }
 
     // printStmt → "print" expression ";" ;
